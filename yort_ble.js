@@ -26,6 +26,7 @@ noble.on('scanStop', function() {
 });
 
 var Distance = 0.0;
+var refRSSI = 0.0;
 // distance calc
 // RSSI = -10 * nLog(d) + A;
 // d = Distance
@@ -44,14 +45,38 @@ noble.on('discover', function(peripheral) {
   client.publish('ATL_FOUNDRY/BLE_SCANNER', JSON.stringify(peripheral.advertisement));
   var obj = peripheral;
   console.log('measuered rssi: ' + peripheral.rssi);
+  console.log(peripheral.advertisement.manufacturerData ? 'ref RSSI: ' + peripheral.advertisement.manufacturerData[24] : 'no ref RSSI' );
+
+  if (peripheral.advertisement.manufacturerData)
+  {
+    if(peripheral.advertisement.manufacturerData[24])
+    {
+      var sign = "";
+      var t = peripheral.advertisement.manufacturerData[24];
+      var topBit = 128;
+      var comp = t;
+      if ((t&topBit) == topBit)
+      {
+        sign = "-";
+        var mask = 255;
+        comp=((t^mask)+1)*(-1.0);
+      }
+      console.log('ref RSSI: ' +  comp);
+      refRSSI = comp;
+    }
+  }
+
   var CurrentRSSI = peripheral.rssi;
   var CurrentPropogationConstant = 2.4;
-  var CurrentRefRSSI = 60.0; //peripheral.advertisement.manufacturerData[18];
+  if (!refRSSI)
+  {
+    refRSSI = -60.0;
+  }
   var DistanceScope =
   {
     CurrentRSSI : peripheral.rssi,
     CurrentProp : 2.4,
-    CurrentRefRSSI : -60.0,
+    CurrentRefRSSI : refRSSI, //-60.0,
     n : 2.4
   };
   distance = math.eval('10^((CurrentRSSI - CurrentRefRSSI)/(-10 * n))', DistanceScope);
