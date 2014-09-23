@@ -1,7 +1,19 @@
 var noble = require('./index');
 var mqtt = require('mqtt');
 var math = require('mathjs');
+var http_server = require('http').Server();
+var io_Server = require('socket.io')(http_server);
+var io_Client = require('socket.io-client')('http://207.242.203.160');
+http_server.listen(3001); //here is where this node listens for incoming socket connections of other clients
 
+// setup connection to johnathans socket.io server
+io_Client.on('connect', function(){
+  console.log('connected to jonathan');
+  io_Client.emit('venue', 'daPi1');
+});
+io_Client.on('connect_timeout', function(){
+  console.log('************************************connect timeout***************************************************');
+});
 var client = mqtt.createClient(2883, '207.141.192.241');
 
 console.log('noble');
@@ -81,6 +93,14 @@ noble.on('discover', function(peripheral) {
   };
   distance = math.eval('10^((CurrentRSSI - CurrentRefRSSI)/(-10 * n))', DistanceScope);
   console.log('distance= ' + distance);
+  var published_device = 
+  {
+    DeviceData: peripheral.advertisement, //JSON.stringify(peripheral.advertisement),
+    Distance: distance,
+    RSSI: CurrentRSSI,
+    HubID: 'hub1'
+  }
+  client.publish('ATL_FOUNDRY/BLE_SCANNER/HUBREPORTS', JSON.stringify(published_device));
   //console.log(peripheral);
   if (peripheral.advertisement.manufacturerData)
   {
